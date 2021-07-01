@@ -1,0 +1,149 @@
+set HEADER_SHIFT 41
+op shl FLARE_HEADER 1 HEADER_SHIFT
+
+bind:
+jump bound notEqual @unit null
+ubind @flare
+jump bind equal @unit null
+sensor flag @unit @flag
+op and activeHeader flag FLARE_HEADER
+jump bind notEqual activeHeader FLARE_HEADER
+
+bound:
+sensor dead @unit @dead
+jump notDead notEqual dead 1
+set @unit null
+jump bind always
+notDead:
+
+read selfAddress cell1 0
+op and selfAddress selfAddress 0xFFFFFFFF
+jump validIP notEqual selfAddress 0
+op and tmp @thisx 0xFFFF
+op shl selfAddress tmp 16
+op and tmp @thisy 0xFFFF
+op or selfAddress selfAddress tmp
+write selfAddress cell1 0
+validIP:
+
+sensor flag @unit @flag
+op shr command flag 33
+op and command command 0xFF
+
+jump searching equal command 1
+notSearching:
+
+read action cell1 1
+
+jump search equal action 1
+searchEnd:
+
+jump end equal link null
+
+set i 0
+uploadCheck:
+read value cell2 i
+write value link i
+op add i i 1
+jump uploadCheck lessThan i 63
+
+end:
+end
+
+
+waitFree:
+op add timeout @time timeout
+set timedout false
+waitFreeLoop:
+jump waitFreeBack lessThan timeout @time
+sensor flag @unit @flag
+jump waitFreeLoop notEqual flag FLARE_HEADER
+waitFreeBack:
+op lessThan timedout timeout @time
+set @counter waitFreeBack
+
+end
+
+
+waitCommand:
+op add timeout @time timeout
+waitCommandLoop:
+jump waitCommandBack lessThan timeout @time
+sensor flag @unit @flag
+op shr activeCommand flag 33
+op and activeCommand activeCommand 0xFF
+jump waitCommandLoop notEqual activeCommand targetCommand
+
+waitCommandBack:
+op lessThan timedout timeout @time
+set @counter waitCommandBack
+
+end
+
+
+
+searching:
+op and address flag 0xFFFFFFFF
+jump notSearching notEqual address selfAddress
+sensor x cell3 @x
+sensor y cell3 @y
+op and x x 0xFFFF
+op and y y 0xFFFF
+op shl x x 16
+op or position x y
+
+op shl flag 2 33
+op or flag flag position
+op or flag flag FLARE_HEADER
+ucontrol flag flag
+end
+
+
+search:
+set link null
+write 0 cell1 2
+
+read timeout cell1 62
+jump not0 greaterThan timeout 0
+set timeout 10000
+not0:
+op add waitFreeBack @counter 1
+jump waitFree always
+jump searchFail equal timedout true
+
+read timeout cell1 61
+jump not1 greaterThan timeout 0
+set timeout 5000
+not1:
+
+# Flag the flare with command 1 including the target IP address
+read targetIP cell1 63
+op shl flag 1 33
+op or flag flag targetIP
+op or flag flag FLARE_HEADER
+ucontrol flag flag
+
+# Wait for command 2 (Locate result)
+set targetCommand 2
+op add waitCommandBack @counter 1
+jump waitCommand always
+jump searchFail equal timedout true
+
+sensor flag @unit @flag
+op shr x flag 16
+op and x x 0xFFFF
+op and y flag 0xFFFF
+approach:
+ucontrol approach x y 2
+ucontrol within x y 2 within
+jump approach notEqual within true
+ucontrol getBlock x y type link
+ucontrol flag FLARE_HEADER
+write 0 cell1 1
+write 1 cell1 2
+jump searchEnd always
+searchFail:
+write 0 cell1 1
+write 2 cell1 2
+jump searchEnd always
+
