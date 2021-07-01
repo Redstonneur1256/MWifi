@@ -1,0 +1,31 @@
+set HEADER_SHIFT 41
+op shl FLARE_HEADER 1 HEADER_SHIFT
+
+bind:
+ubind @flare
+jump bind equal @unit null
+set firstUnit @unit
+set freeUnit null
+
+loop:
+ubind @flare
+
+sensor dead firstUnit @dead
+jump loop1 equal dead false
+set firstUnit @unit
+loop1:
+
+# If the unit has the header we don't need to make one have it
+sensor flag @unit @flag
+op and header flag FLARE_HEADER
+jump bind equal header FLARE_HEADER
+
+sensor controlled @unit @controlled
+jump loopEnd notEqual controlled 0
+set freeUnit @unit
+loopEnd:
+jump loop notEqual firstUnit @unit
+
+jump bind equal freeUnit null
+
+ucontrol flag FLARE_HEADER
