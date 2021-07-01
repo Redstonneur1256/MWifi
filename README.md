@@ -25,7 +25,7 @@
 ### Internal structure to open a connection:
 A single flare is bind by the main router and then flagged with the command 0
 
-- Main processor wait for the common flare command (bits 33-40) to be at 0
+- Main processor wait for the common flare command to be at 0
 - Main processor flags the flare with the command `0x01` with the bits 0-32 being the IP of the target processor
 - Other processors read the command, check the IP if its the same then flag the flare with command `0x02` and the bits 0-32 being the packed position of target memory cell
 - Main processor unpack the position, move the flare to position to get the block and then flag the flare with command `0x00`
